@@ -1,0 +1,13 @@
+[Unit]
+Description=Temporal PostgreSQL database
+
+[Container]
+Image=docker.io/library/postgres:16
+ContainerName=postiz-temporal-db
+Network=postiz.network
+Environment=POSTGRES_PASSWORD=temporal
+Environment=POSTGRES_USER=temporal
+Volume=%h/.roxabi/postiz/data/temporal-postgres:/var/lib/postgresql/data:Z
+
+[Install]
+WantedBy=default.target

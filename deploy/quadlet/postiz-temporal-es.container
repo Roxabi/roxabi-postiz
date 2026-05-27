@@ -1,0 +1,18 @@
+[Unit]
+Description=Temporal Elasticsearch
+
+[Container]
+Image=docker.io/library/elasticsearch:7.17.27
+ContainerName=postiz-temporal-es
+Network=postiz.network
+Environment=cluster.routing.allocation.disk.threshold_enabled=true
+Environment=cluster.routing.allocation.disk.watermark.low=512mb
+Environment=cluster.routing.allocation.disk.watermark.high=256mb
+Environment=cluster.routing.allocation.disk.watermark.flood_stage=128mb
+Environment=discovery.type=single-node
+Environment=ES_JAVA_OPTS=-Xms256m -Xmx256m
+Environment=xpack.security.enabled=false
+Volume=%h/.roxabi/postiz/data/temporal-es:/usr/share/elasticsearch/data:Z
+
+[Install]
+WantedBy=default.target

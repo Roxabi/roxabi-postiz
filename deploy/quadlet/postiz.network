@@ -1,0 +1,6 @@
+[Network]
+NetworkName=postiz
+Driver=bridge
+
+[Install]
+WantedBy=default.target

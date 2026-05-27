@@ -1,0 +1,15 @@
+[Unit]
+Description=Postiz Redis
+
+[Container]
+Image=docker.io/library/redis:7.2
+ContainerName=postiz-redis
+Network=postiz.network
+HealthCmd=redis-cli ping
+HealthInterval=10s
+HealthRetries=3
+HealthTimeout=3s
+Volume=%h/.roxabi/postiz/data/redis:/data:Z
+
+[Install]
+WantedBy=default.target

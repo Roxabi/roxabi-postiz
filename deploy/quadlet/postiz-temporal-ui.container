@@ -1,0 +1,15 @@
+[Unit]
+Description=Temporal UI for Postiz
+After=postiz-temporal.service
+Requires=postiz-temporal.service
+
+[Container]
+Image=docker.io/temporalio/ui:2.34.0
+ContainerName=postiz-temporal-ui
+Network=postiz.network
+PublishPort=8080:8080
+Environment=TEMPORAL_ADDRESS=postiz-temporal:7233
+Environment=TEMPORAL_CORS_ORIGINS=http://127.0.0.1:3000
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Postiz app
+After=postiz-db.service postiz-redis.service postiz-temporal.service
+Requires=postiz-db.service postiz-redis.service postiz-temporal.service
+
+[Container]
+Image=ghcr.io/gitroomhq/postiz-app:latest
+ContainerName=postiz-app
+Network=postiz.network
+PublishPort=4007:5000
+EnvironmentFile=%h/.roxabi/postiz/env/postiz.env
+Volume=%h/.roxabi/postiz/data/config:/config:Z
+Volume=%h/.roxabi/postiz/data/uploads:/uploads:Z
+
+[Install]
+WantedBy=default.target
