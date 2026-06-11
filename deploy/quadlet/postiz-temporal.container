@@ -7,7 +7,7 @@ Requires=postiz-temporal-db.service postiz-temporal-es.service
 Image=docker.io/temporalio/auto-setup:1.28.1
 ContainerName=postiz-temporal
 Network=postiz.network
-PublishPort=7233:7233
+PublishPort=127.0.0.1:7233:7233
 Environment=DB=postgres12
 Environment=DB_PORT=5432
 Environment=POSTGRES_USER=temporal
