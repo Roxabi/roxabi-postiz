@@ -4,6 +4,8 @@ After=postiz-temporal-db.service postiz-temporal-es.service
 Requires=postiz-temporal-db.service postiz-temporal-es.service
 
 [Container]
+DropCapability=all
+NoNewPrivileges=true
 Image=docker.io/temporalio/auto-setup:1.28.1
 ContainerName=postiz-temporal
 Network=postiz.network

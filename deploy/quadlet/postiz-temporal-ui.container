@@ -4,6 +4,9 @@ After=postiz-temporal.service
 Requires=postiz-temporal.service
 
 [Container]
+DropCapability=all
+AddCapability=CHOWN DAC_OVERRIDE
+NoNewPrivileges=true
 Image=docker.io/temporalio/ui:2.34.0
 ContainerName=postiz-temporal-ui
 Network=postiz.network

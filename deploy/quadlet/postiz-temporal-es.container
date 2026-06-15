@@ -2,6 +2,9 @@
 Description=Temporal Elasticsearch
 
 [Container]
+DropCapability=all
+AddCapability=CHOWN DAC_OVERRIDE SETGID SETUID SYS_CHROOT
+NoNewPrivileges=true
 Image=docker.io/library/elasticsearch:7.17.27
 ContainerName=postiz-temporal-es
 Network=postiz.network

@@ -2,6 +2,9 @@
 Description=Postiz PostgreSQL database
 
 [Container]
+DropCapability=all
+AddCapability=CHOWN DAC_OVERRIDE FOWNER SETGID SETUID
+NoNewPrivileges=true
 Image=docker.io/library/postgres:17-alpine
 ContainerName=postiz-db
 Network=postiz.network

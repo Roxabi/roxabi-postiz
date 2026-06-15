@@ -4,6 +4,9 @@ After=postiz-db.service postiz-redis.service postiz-temporal.service
 Requires=postiz-db.service postiz-redis.service postiz-temporal.service
 
 [Container]
+DropCapability=all
+AddCapability=CHOWN DAC_OVERRIDE FOWNER SETGID SETUID
+NoNewPrivileges=true
 Image=ghcr.io/gitroomhq/postiz-app:latest
 ContainerName=postiz-app
 Network=postiz.network

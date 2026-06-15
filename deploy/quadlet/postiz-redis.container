@@ -2,6 +2,9 @@
 Description=Postiz Redis
 
 [Container]
+DropCapability=all
+AddCapability=CHOWN DAC_OVERRIDE SETGID SETUID
+NoNewPrivileges=true
 Image=docker.io/library/redis:7.2
 ContainerName=postiz-redis
 Network=postiz.network
