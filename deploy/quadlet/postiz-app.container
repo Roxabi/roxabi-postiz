@@ -7,13 +7,23 @@ Requires=postiz-db.service postiz-redis.service postiz-temporal.service
 DropCapability=all
 AddCapability=CHOWN DAC_OVERRIDE FOWNER SETGID SETUID
 NoNewPrivileges=true
-Image=ghcr.io/gitroomhq/postiz-app:v1.47.0
+# Pin by digest — bump only via deploy/converge.sh (never stale semver tags like v1.47.0).
+Image=ghcr.io/gitroomhq/postiz-app@sha256:1d5a5dc6b896747d1483c01dc2562165bd313ad601b32f6cabb7f7dd08a911a9
 ContainerName=postiz-app
 Network=postiz.network
 PublishPort=127.0.0.1:4007:5000
 EnvironmentFile=%h/.roxabi/postiz/env/postiz.env
 Volume=%h/.roxabi/postiz/data/config:/config:Z
 Volume=%h/.roxabi/postiz/data/uploads:/uploads:Z
+HealthCmd=node -e "require('http').get('http://127.0.0.1:5000/auth',(r)=>{process.exit(r.statusCode&&r.statusCode<500?0:1)}).on('error',()=>process.exit(1))" || exit 1
+HealthInterval=30s
+HealthRetries=5
+HealthTimeout=10s
+HealthStartPeriod=120s
+
+[Service]
+Restart=on-failure
+RestartSec=15
 
 [Install]
 WantedBy=default.target

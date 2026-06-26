@@ -1,0 +1,12 @@
+[Unit]
+Description=Postiz image converge (pull, validate, pin digest, restart)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.roxabi/postiz/deploy
+ExecStart=%h/.roxabi/postiz/deploy/converge.sh
+
+[Install]
+WantedBy=default.target
