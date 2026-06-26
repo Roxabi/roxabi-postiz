@@ -129,21 +129,46 @@ wait_for_container_health() {
   echo "WARN: ${name} health=${status} after ${timeout}s (continuing)" >&2
 }
 
+wait_for_tcp() {
+  local host="$1"
+  local port="$2"
+  local timeout="${3:-120}"
+  local deadline=$((SECONDS + timeout))
+  while (( SECONDS < deadline )); do
+    if podman run --rm --network postiz docker.io/library/busybox:1.36 \
+      sh -c "nc -z ${host} ${port}" >/dev/null 2>&1; then
+      echo "OK: ${host}:${port} reachable"
+      return 0
+    fi
+    sleep 3
+  done
+  echo "FAIL: ${host}:${port} not reachable within ${timeout}s" >&2
+  return 1
+}
+
 restart_full_stack() {
   local svc
   echo "==> Restart infra"
-  for svc in "${INFRA_SERVICES[@]}"; do
+  systemctl --user restart postiz-temporal-es.service
+  sleep 45
+  wait_for_tcp postiz-temporal-es 9200 180 || true
+  for svc in postiz-db postiz-redis postiz-temporal-db; do
     systemctl --user restart "${svc}.service"
   done
   sleep 15
-  for svc in "${INFRA_SERVICES[@]}"; do
-    wait_for_container_health "${svc%.service}" 90 || true
+  for svc in postiz-db postiz-redis postiz-temporal-db postiz-temporal-es; do
+    wait_for_container_health "${svc}" 90 || true
   done
 
   echo "==> Restart temporal"
   systemctl --user restart postiz-temporal.service
-  sleep 30
-  wait_for_container_health postiz-temporal 120 || true
+  sleep 45
+  wait_for_tcp postiz-temporal 7233 180 || true
+  if ! systemctl --user is-active --quiet postiz-temporal.service; then
+    echo "FAIL: postiz-temporal.service not active" >&2
+    systemctl --user status postiz-temporal.service --no-pager -l | tail -20 >&2 || true
+    return 1
+  fi
 
   echo "==> Restart ui + app"
   systemctl --user restart postiz-temporal-ui.service postiz-app.service
