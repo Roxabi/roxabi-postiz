@@ -5,6 +5,7 @@
 #
 # Usage (on M1):
 #   ./deploy/converge.sh              # pull :latest, validate, pin, restart postiz-app
+#   ./deploy/converge.sh --all        # same + pull/restart full stack (db, redis, temporal…)
 #   ./deploy/converge.sh --check      # validate running container only
 #   POSTIZ_APP_REF=ghcr.io/.../postiz-app:latest ./deploy/converge.sh
 set -euo pipefail
@@ -20,7 +21,10 @@ REF="${POSTIZ_APP_REF:-ghcr.io/gitroomhq/postiz-app:latest}"
 MIN_NODE_MAJOR=20
 MIN_NODE_MINOR=19
 CHECK_ONLY=false
+CONVERGE_ALL=false
 STARTUP_TIMEOUT_SEC=180
+INFRA_SERVICES=(postiz-db postiz-redis postiz-temporal-db postiz-temporal-es)
+TEMPORAL_SERVICES=(postiz-temporal postiz-temporal-ui)
 
 usage() {
   sed -n '2,10p' "$0"
@@ -30,6 +34,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --check) CHECK_ONLY=true; shift ;;
+    --all) CONVERGE_ALL=true; shift ;;
     *) echo "Unknown arg: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -90,6 +95,58 @@ wait_for_http() {
   echo "FAIL: ${url} not healthy within ${STARTUP_TIMEOUT_SEC}s (last HTTP ${code:-000})" >&2
   podman logs --tail 30 postiz-app >&2 || true
   return 1
+}
+
+pull_stack_images() {
+  local quadlet image
+  for quadlet in "${QUADLET_SRC}"/postiz-*.container; do
+    [[ -f "${quadlet}" ]] || continue
+    [[ "$(basename "${quadlet}")" == "postiz-app.container" ]] && continue
+    image="$(grep '^Image=' "${quadlet}" | head -1 | cut -d= -f2-)"
+    [[ -n "${image}" ]] || continue
+    echo "==> Pull ${image}"
+    podman pull "${image}"
+  done
+}
+
+wait_for_container_health() {
+  local name="$1"
+  local timeout="${2:-120}"
+  local deadline=$((SECONDS + timeout))
+  local status
+  while (( SECONDS < deadline )); do
+    status="$(podman inspect "${name}" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' 2>/dev/null || echo missing)"
+    case "${status}" in
+      healthy|none) echo "OK: ${name} health=${status}"; return 0 ;;
+      unhealthy)
+        echo "FAIL: ${name} unhealthy" >&2
+        podman logs --tail 20 "${name}" >&2 || true
+        return 1
+        ;;
+    esac
+    sleep 3
+  done
+  echo "WARN: ${name} health=${status} after ${timeout}s (continuing)" >&2
+}
+
+restart_full_stack() {
+  local svc
+  echo "==> Restart infra"
+  for svc in "${INFRA_SERVICES[@]}"; do
+    systemctl --user restart "${svc}.service"
+  done
+  sleep 15
+  for svc in "${INFRA_SERVICES[@]}"; do
+    wait_for_container_health "${svc%.service}" 90 || true
+  done
+
+  echo "==> Restart temporal"
+  systemctl --user restart postiz-temporal.service
+  sleep 30
+  wait_for_container_health postiz-temporal 120 || true
+
+  echo "==> Restart ui + app"
+  systemctl --user restart postiz-temporal-ui.service postiz-app.service
 }
 
 check_running() {
@@ -161,10 +218,22 @@ mkdir -p "${HOME}/.config/systemd/user"
 rsync -av "${DEPLOY_DIR}/systemd/" "${HOME}/.config/systemd/user/"
 update_lock "${REF}" "${digest_image}" "${node_ver}"
 
-echo "==> Reload systemd + restart ${APP_SERVICE}"
+if [[ "${CONVERGE_ALL}" == true ]]; then
+  pull_stack_images
+fi
+
+echo "==> Reload systemd"
 systemctl --user daemon-reload
 systemctl --user enable postiz-converge.timer
-systemctl --user restart "${APP_SERVICE}"
+
+if [[ "${CONVERGE_ALL}" == true ]]; then
+  restart_full_stack
+else
+  systemctl --user restart "${APP_SERVICE}"
+fi
 
 wait_for_http "http://127.0.0.1:4007/auth"
-echo "==> Converge complete: ${digest_image} (${node_ver})"
+if [[ "${CONVERGE_ALL}" == true ]]; then
+  wait_for_http "http://127.0.0.1:8080/" || true
+fi
+echo "==> Converge complete: ${digest_image} (${node_ver})${CONVERGE_ALL:+, full stack}"

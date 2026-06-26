@@ -24,7 +24,7 @@ TEMPORAL_SERVICES := postiz-temporal.service postiz-temporal-ui.service
 APP_SERVICES := postiz-app.service
 ALL_SERVICES := $(INFRA_SERVICES) $(TEMPORAL_SERVICES) $(APP_SERVICES)
 
-.PHONY: help install-quadlet uninstall-quadlet pull-app start stop restart status converge
+.PHONY: help install-quadlet uninstall-quadlet pull-app pull-all start stop restart status converge converge-all
 
 help:
 	@echo "Roxabi postiz deploy targets:"
@@ -36,6 +36,7 @@ help:
 	@echo "  restart            restart full stack"
 	@echo "  status             systemctl status for all postiz units"
 	@echo "  converge           git pull + install-quadlet + pull-app + restart app"
+	@echo "  converge-all       full stack pull + validate + ordered restart (deploy/converge.sh --all)"
 
 install-quadlet:
 	@mkdir -p $(QUADLET_DIR)
@@ -56,6 +57,13 @@ pull-app:
 	@echo "Pulling $(POSTIZ_APP_IMAGE)..."
 	@podman pull $(POSTIZ_APP_IMAGE)
 
+pull-all:
+	@for f in $(QUADLET_SRC)/postiz-*.container; do \
+		img=$$(grep '^Image=' "$$f" | head -1 | cut -d= -f2-); \
+		echo "Pulling $$img..."; \
+		podman pull "$$img"; \
+	done
+
 start:
 	@systemctl --user start $(INFRA_SERVICES)
 	@sleep 15
@@ -75,8 +83,8 @@ status:
 converge:
 	@git pull --ff-only origin main
 	@$(MAKE) install-quadlet
-	@$(MAKE) pull-app
-	@systemctl --user restart postiz-app.service
-	@systemctl --user is-active --quiet postiz-app.service \
-		|| { echo "ERROR: postiz-app failed to reach active state"; exit 1; }
-	@echo "Converged on $(POSTIZ_APP_IMAGE)."
+	@deploy/converge.sh
+
+converge-all:
+	@git pull --ff-only origin main
+	@deploy/converge.sh --all
