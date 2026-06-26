@@ -6,7 +6,7 @@ Self-hosted Postiz on M1 (`roxabituwer`) via Podman Quadlet user units.
 
 | Service | Image | Purpose |
 |---------|-------|---------|
-| postiz-app | `ghcr.io/gitroomhq/postiz-app:latest` | NextJS frontend + NestJS backend |
+| postiz-app | `ghcr.io/gitroomhq/postiz-app:v1.47.0` | NextJS frontend + NestJS backend (pinned — no `:latest`) |
 | postiz-db | `docker.io/library/postgres:17-alpine` | App database |
 | postiz-redis | `docker.io/library/redis:7.2` | Cache / queue |
 | postiz-temporal | `docker.io/temporalio/auto-setup:1.28.1` | Workflow engine |
@@ -32,25 +32,30 @@ Self-hosted Postiz on M1 (`roxabituwer`) via Podman Quadlet user units.
 ## Install
 
 ```bash
-# Copy Quadlet units
-mkdir -p ~/.config/containers/systemd
-rsync -av deploy/quadlet/ ~/.config/containers/systemd/
-
-# Create data dirs
+# Create data dirs + env (first boot only)
 mkdir -p ~/.roxabi/postiz/data/{postgres,redis,temporal-postgres,temporal-es,uploads,config,dynamicconfig}
 mkdir -p ~/.roxabi/postiz/env
-
-# Copy env
 cp deploy/quadlet/postiz.env.example ~/.roxabi/postiz/env/postiz.env
 # Edit JWT_SECRET and URLs
 
-# Reload + start
-systemctl --user daemon-reload
-systemctl --user start postiz-db postiz-redis postiz-temporal-db postiz-temporal-es
-sleep 15
-systemctl --user start postiz-temporal
-sleep 30
-systemctl --user start postiz-temporal-ui postiz-app
+# Install Quadlets + pull pinned image + start stack
+make install-quadlet
+make pull-app
+make start
+```
+
+## Converge (routine operator sync)
+
+Idempotent refresh after unit or image-pin changes:
+
+```bash
+make converge   # git pull + install-quadlet + podman pull + restart postiz-app
+```
+
+Remote from devbox:
+
+```bash
+ssh roxabituwer 'cd ~/projects/roxabi-postiz && make converge'
 ```
 
 ## URLs
