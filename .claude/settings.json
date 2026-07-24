@@ -16,5 +16,18 @@
       "Bash(vi .env)",
       "Bash(vim .env)"
     ]
+  },
+  "enabledPlugins": {
+    "dev-core@roxabi-marketplace": true,
+    "dev-init@roxabi-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "roxabi-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "Roxabi/roxabi-plugins"
+      },
+      "autoUpdate": true
+    }
   }
 }
